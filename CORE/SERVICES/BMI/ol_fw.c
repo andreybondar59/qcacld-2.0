@@ -974,7 +974,6 @@ end:
  * Return: The buffer with the formated board filename.
  */
 
-#ifdef CONFIG_QCA_BOARD_DATA_USE_BOARD_ID
 #if (defined(CONFIG_CNSS) || defined(HIF_SDIO))
 static char *ol_board_id_to_filename(struct ol_softc *scn, uint16_t board_id)
 {
@@ -1011,7 +1010,6 @@ static char *ol_board_id_to_filename(struct ol_softc *scn, uint16_t board_id)
 	return kstrdup(QCA_BOARD_DATA_FILE, GFP_KERNEL);
 #endif
 }
-#endif
 #endif
 
 #if defined(CONFIG_HL_SUPPORT)
@@ -1138,7 +1136,6 @@ defined(CONFIG_NON_QC_PLATFORM_PCI)
 		printk("%s: no Patch file defined\n", __func__);
 		return EOK;
 	case ATH_BOARD_DATA_FILE:
-#ifdef CONFIG_QCA_BOARD_DATA_USE_BOARD_ID
 		bd_id_filename = ol_board_id_to_filename(scn, scn->board_id);
 		if (bd_id_filename)
 			filename = bd_id_filename;
@@ -1147,9 +1144,6 @@ defined(CONFIG_NON_QC_PLATFORM_PCI)
 							__func__);
 			return -1;
 		}
-#else
-		filename = scn->fw_files.board_data;
-#endif
 
 #ifdef QCA_WIFI_FTM
 		if (vos_get_conparam() == VOS_FTM_MODE) {

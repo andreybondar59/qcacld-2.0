@@ -1472,6 +1472,9 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
    // walk the chain until all are processed
    skb = (struct sk_buff *) rxBuf;
    pHddStaCtx = WLAN_HDD_GET_STATION_CTX_PTR(pAdapter);
+#ifndef cfg80211_is_gratuitous_arp_unsolicited_na
+#define cfg80211_is_gratuitous_arp_unsolicited_na(skb) 0
+#endif
    while (NULL != skb) {
       skb_next = skb->next;
 

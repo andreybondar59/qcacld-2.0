@@ -487,6 +487,7 @@ static void hdd_update_timestamp(hdd_adapter_t *adapter,
 		 * If reach MAX_CONTINUOUS_ERROR_CNT, treat it as a
 		 * valid pair
 		 */
+		fallthrough;
 	case HDD_TS_STATUS_READY:
 		adapter->last_target_time = adapter->cur_target_time;
 		adapter->last_host_time = adapter->cur_host_time;
@@ -1166,7 +1167,7 @@ int hdd_tx_timestamp(adf_nbuf_t netbuf, uint64_t target_time)
 	if (netbuf->sk != NULL)
 		sk = netbuf->sk;
 	else
-		memcpy((void *)(&sk), (void *)(&netbuf->tstamp.tv64),
+		memcpy((void *)(&sk), (void *)(&netbuf->skb_mstamp_ns),
 		       sizeof(sk));
 
 	if (!sk)
@@ -1416,7 +1417,7 @@ hdd_tsf_record_sk_for_skb(hdd_context_t *hdd_ctx, adf_nbuf_t nbuf)
 	 * be set to NULL in skb_orphan().
 	 */
 	if (HDD_TSF_IS_TX_SET(hdd_ctx))
-		memcpy((void *)(&nbuf->tstamp.tv64), (void *)(&nbuf->sk),
+		memcpy((void *)(&nbuf->skb_mstamp_ns), (void *)(&nbuf->sk),
 		       sizeof(nbuf->sk));
 }
 #else
@@ -1518,7 +1519,7 @@ int wlan_get_ts_info(struct net_device *dev, struct ethtool_ts_info *info)
  *
  * Return: Describe the execute result of this routine
  */
-static int wlan_ptp_gettime(struct ptp_clock_info *ptp, struct timespec64 *ts)
+static int wlan_ptp_gettime(struct ptp_clock_info *ptp, struct timespec *ts)
 {
 	uint64_t host_time, target_time = 0;
 	VosContextType *pVosContext = NULL;
