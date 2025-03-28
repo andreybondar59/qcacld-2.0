@@ -1,5 +1,4 @@
-#KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
-KERNEL_SRC ?= ../linux-compulab-6-6-52
+KERNEL_SRC ?= /lib/modules/$(shell uname -r)/build
 
 KBUILD_OPTIONS := WLAN_ROOT=$(PWD)
 KBUILD_OPTIONS += MODNAME?=wlan
