@@ -195,7 +195,7 @@ CONFIG_WLAN_FEATURE_SAE := y
 # Feature flags which are not (currently) configurable via Kconfig
 
 #Whether to build debug version
-BUILD_DEBUG_VERSION := 1
+BUILD_DEBUG_VERSION ?= 0
 
 #Enable this flag to build driver in diag version
 BUILD_DIAG_VERSION := 1
@@ -1085,7 +1085,6 @@ CDEFINES :=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DWLAN_WAKEUP_EVENTS \
 		-DFEATURE_WLAN_RA_FILTERING\
 	        -DWLAN_KD_READY_NOTIFIER \
-		-DWLAN_NL80211_TESTMODE \
 		-DFEATURE_WLAN_LPHB \
 		-DFEATURE_WLAN_PAL_TIMER_DISABLE \
 		-DFEATURE_WLAN_PAL_MEM_DISABLE \
@@ -1100,10 +1099,19 @@ CDEFINES :=	-DANI_LITTLE_BYTE_ENDIAN \
 		-DHTC_CRP_DEBUG \
 		-DWLAN_VOWIFI_DEBUG \
 		-DATH_SUPPORT_DFS \
-		-DWMI_COEX_BTC_DUTYCYCLE
+		-DWMI_COEX_BTC_DUTYCYCLE \
+		-DBUILD_STRING="\"+${BUILD_STRING}\""
+
+ifeq ($(CONFIG_NL80211_TESTMODE), y)
+CDEFINES +=	-DWLAN_NL80211_TESTMODE
+endif
 
 ifeq ($(CONFIG_WLAN_POWER_DEBUGFS), y)
 CDEFINES += -DWLAN_POWER_DEBUGFS
+endif
+
+ifneq ($(CONFIG_HDD_WLAN_START_WAIT_TIME),)
+CDEFINES += -DHDD_WLAN_START_WAIT_TIME=$(CONFIG_HDD_WLAN_START_WAIT_TIME)
 endif
 
 ifeq ($(CONFIG_FEATURE_COEX_PTA_CONFIG_ENABLE), y)
@@ -1111,7 +1119,9 @@ CDEFINES += -DFEATURE_COEX_PTA_CONFIG_ENABLE
 endif
 
 ifeq ($(CONFIG_QCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK), y)
+ifneq ($(CONFIG_ANDROID), y)
 CDEFINES += -DQCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK
+endif
 CDEFINES += -DFEATURE_BUS_BANDWIDTH
 endif
 
@@ -1148,10 +1158,12 @@ ifeq ($(CONFIG_TXRX_PERF), y)
 CDEFINES +=	-DQCA_TXRX_PERF \
 		-DTX_COMPLETION_THREAD \
 		-DMSM8976_TCP_PERF \
-		-DQCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK \
 		-DFEATURE_BUS_BANDWIDTH \
 		-DCONFIG_PERF_NON_QC_PLATFORM \
 		-DHIF_RX_THREAD
+ifneq ($(CONFIG_ANDROID), y)
+CDEFINES += -DQCA_SUPPORT_TXRX_DRIVER_TCP_DEL_ACK
+endif
 endif
 
 # Enable SDIO HIF Rx Thread
@@ -1162,7 +1174,7 @@ endif
 
 ifeq ($(CONFIG_TXRX_PERF_EXT), y)
 CDEFINES += -DCONFIG_IXC_TIMER \
-		-DCONFIG_PERF_MODE 
+		-DCONFIG_PERF_MODE
 endif
 
 ifeq ($(CONFIG_CUSTOMIZED_FIRMWARE_PATH), y)
@@ -1614,7 +1626,9 @@ else #CONFIG_MOBILE_ROUTER
 
 #Open P2P device interface only for non-Mobile router use cases
 ifneq ($(CONFIG_SUPPORT_IFTYPE_P2P_DEVICE_VIF), y)
+ifeq ($(CONFIG_P2P_INTERFACE), y)
 CDEFINES += -DWLAN_OPEN_P2P_INTERFACE
+endif
 endif
 
 #Enable 2.4 GHz social channels in 5 GHz only mode for p2p usage
@@ -1870,6 +1884,30 @@ ifeq ($(call cc-option-yn, -Wheader-guard),y)
 EXTRA_CFLAGS += -Wheader-guard
 endif
 
+ifeq ($(call cc-option-yn, -Wno-implicit-fallthrough),y)
+EXTRA_CFLAGS += -Wno-implicit-fallthrough
+endif
+
+ifeq ($(call cc-option-yn, -Wno-maybe-uninitialized),y)
+EXTRA_CFLAGS += -Wno-maybe-uninitialized
+endif
+
+ifeq ($(call cc-option-yn, -Wno-discarded-qualifiers),y)
+EXTRA_CFLAGS += -Wno-discarded-qualifiers
+endif
+
+ifeq ($(call cc-option-yn, -Wno-cast-function-type),y)
+EXTRA_CFLAGS += -Wno-cast-function-type
+endif
+
+ifeq ($(call cc-option-yn, -Wno-address),y)
+EXTRA_CFLAGS += -Wno-address
+endif
+
+ifeq ($(call cc-option-yn, -Wno-enum-conversion),y)
+EXTRA_CFLAGS += -Wno-enum-conversion
+endif
+
 # If the module name is not "wlan", then the define MULTI_IF_NAME to be the
 # same a the QCA CHIP name. The host driver will then append MULTI_IF_NAME to
 # any string that must be unique for all instances of the driver on the system.
@@ -1898,6 +1936,10 @@ endif
 
 ifeq ($(CONFIG_CLD_REGDB), y)
 CDEFINES += -DCLD_REGDB
+endif
+
+ifeq ($(CONFIG_FORCE_MLO_SUPPORT), y)
+CDEFINES += -DFORCE_MLO_SUPPORT
 endif
 
 # Module information used by KBuild framework

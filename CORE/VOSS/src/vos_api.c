@@ -2635,7 +2635,7 @@ uint64_t vos_get_monotonic_boottime(void)
 v_U64_t vos_get_monotonic_boottime(void)
 {
 #ifdef CONFIG_CNSS
-   struct timespec ts;
+   struct timespec64 ts;
 
    vos_get_monotonic_boottime_ts(&ts);
    return (((v_U64_t)ts.tv_sec * 1000000) + (ts.tv_nsec / 1000));
@@ -3247,10 +3247,10 @@ void vos_svc_fw_shutdown_ind(struct device *dev)
 
 v_U64_t vos_get_monotonic_boottime_ns(void)
 {
-	struct timespec ts;
+	struct timespec64 ts;
 
-	ktime_get_ts(&ts);
-	return timespec_to_ns(&ts);
+	ktime_get_ts64(&ts);
+	return timespec64_to_ns(&ts);
 }
 
 #if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 3, 0))
@@ -3465,9 +3465,11 @@ static int qca_readwrite_file(const char *filename,
 {
     int ret = 0;
     struct file *filp = (struct file *)-ENOENT;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
     mm_segment_t oldfs;
     oldfs = get_fs();
     set_fs(KERNEL_DS);
+#endif
 
     hddLog(VOS_TRACE_LEVEL_INFO, "%s: filename %s \n", __func__, filename);
 
@@ -3515,7 +3517,9 @@ static int qca_readwrite_file(const char *filename,
     if (!IS_ERR(filp)) {
         filp_close(filp, NULL);
     }
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
     set_fs(oldfs);
+#endif
 
     return ret;
 }

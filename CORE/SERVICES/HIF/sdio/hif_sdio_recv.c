@@ -1028,7 +1028,11 @@ int rx_completion_task(void *param)
         }
         adf_os_spin_unlock_irqrestore(&device->pRecvTask->rx_alloc_lock);
     }
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+    kthread_complete_and_exit(&device->pRecvTask->rx_completion_exit, 0);
+#else
     complete_and_exit(&device->pRecvTask->rx_completion_exit, 0);
+#endif
     return 0;
 }
 #endif
@@ -1780,7 +1784,7 @@ static A_STATUS HIFDevProcessPendingIRQs(HIF_SDIO_DEVICE *pDev, A_BOOL *pDone,
             ((pDev)->CurrentDSRRecvCount >= (pDev)->HifIRQYieldParams.RecvPacketYieldCount)
 
 /* Synchronousinterrupt handler, this handler kicks off all interrupt processing.*/
-A_STATUS HIFDevDsrHandler(void *context)
+int HIFDevDsrHandler(void *context)
 {
     HIF_SDIO_DEVICE *pDev = (HIF_SDIO_DEVICE *) context;
     A_STATUS status = A_OK;

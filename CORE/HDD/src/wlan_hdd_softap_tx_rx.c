@@ -494,14 +494,15 @@ drop_list:
 
 }
 
-int hdd_softap_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
+netdev_tx_t hdd_softap_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	int ret;
 
 	vos_ssr_protect(__func__);
 	ret = __hdd_softap_hard_start_xmit(skb, dev);
 	vos_ssr_unprotect(__func__);
-	return ret;
+
+	return (netdev_tx_t)ret;
 }
 
 /**
@@ -562,7 +563,11 @@ static void __hdd_softap_tx_timeout(struct net_device *dev)
  *
  * Return: none
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0))
+void hdd_softap_tx_timeout(struct net_device *dev, unsigned int txqueue)
+#else
 void hdd_softap_tx_timeout(struct net_device *dev)
+#endif
 {
 	vos_ssr_protect(__func__);
 	__hdd_softap_tx_timeout(dev);
@@ -995,7 +1000,7 @@ VOS_STATUS hdd_softap_rx_packet_cbk(v_VOID_t *vosContext,
           * This is the last packet on the chain
           * Scheduling rx sirq
           */
-         rxstat = netif_rx_ni(skb);
+         rxstat = netif_rx(skb);
       }
 
       if (NET_RX_SUCCESS == rxstat)

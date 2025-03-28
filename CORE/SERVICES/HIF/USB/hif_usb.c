@@ -99,7 +99,11 @@ int notifyDeviceInsertedHandler(void *hHIF)
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("+%s\n", __func__));
 	osDrvcallback.deviceInsertedHandler(osDrvcallback.context, hHIF);
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("-%s\n", __func__));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+	kthread_complete_and_exit(NULL, 0);
+#else
 	complete_and_exit(NULL, 0);
+#endif
 	return 0;
 }
 
@@ -110,7 +114,11 @@ int notifyDeviceSurprisedRemovedHandler(void *context)
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("+%s\n", __func__));
 	osDrvcallback.deviceRemovedHandler(device->claimed_context, device);
 	AR_DEBUG_PRINTF(ATH_DEBUG_TRC, ("-%s\n", __func__));
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+	kthread_complete_and_exit(NULL, 0);
+#else
 	complete_and_exit(NULL, 0);
+#endif
 	return 0;
 }
 
@@ -389,13 +397,13 @@ exit:
 }
 
 /* Send the entire buffer */
-A_STATUS HIFSend(HIF_DEVICE *hif_device, a_uint8_t pipe, adf_nbuf_t hdr_buf,
+int HIFSend(HIF_DEVICE *hif_device, a_uint8_t pipe, adf_nbuf_t hdr_buf,
 		 adf_nbuf_t netbuf)
 {
 	return HIFSend_head(hif_device, pipe, 0, adf_nbuf_len(netbuf), netbuf);
 }
 
-A_STATUS
+int
 HIFSend_head(HIF_DEVICE *hif_device,
 	     a_uint8_t pipe, unsigned int transfer_id, unsigned int nbytes,
 	     adf_nbuf_t nbuf)

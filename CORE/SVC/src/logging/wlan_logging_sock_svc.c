@@ -31,7 +31,7 @@
  ******************************************************************************/
 
 #ifdef WLAN_LOGGING_SOCK_SVC_ENABLE
-#include <vmalloc.h>
+#include <linux/vmalloc.h>
 #include <wlan_nlink_srv.h>
 #include <vos_status.h>
 #include <vos_trace.h>
@@ -39,7 +39,7 @@
 #include <wlan_logging_sock_svc.h>
 #include <vos_types.h>
 #include <vos_trace.h>
-#include <kthread.h>
+#include <linux/kthread.h>
 #include <adf_os_time.h>
 #include "pktlog_ac.h"
 #include <linux/rtc.h>
@@ -282,9 +282,9 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 	int total_log_len;
 	unsigned int *pfilled_length;
 	bool wake_up_thread = false;
-	struct timeval tv;
+	struct timespec64 tv;
 	struct rtc_time tm;
-	unsigned long local_time;
+	time64_t local_time;
 	int radio;
 
 	radio = vos_get_radio_index();
@@ -310,14 +310,14 @@ int wlan_log_to_user(VOS_TRACE_LEVEL log_level, char *to_be_sent, int length)
 	} else {
 
 		/* Format the Log time R#: [hr:min:sec.microsec] */
-		vos_timer_get_timeval(&tv);
+		ktime_get_real_ts64(&tv);
 		/* Convert rtc to local time */
-		local_time = (u32)(tv.tv_sec - (sys_tz.tz_minuteswest * 60));
-		rtc_time_to_tm(local_time, &tm);
+		local_time = (u64)(tv.tv_sec - (sys_tz.tz_minuteswest * 60));
+		rtc_time64_to_tm(local_time, &tm);
 		tlen = snprintf(tbuf, sizeof(tbuf),
 				"R%d: [%s][%02d:%02d:%02d.%06lu] ",
 				radio, current->comm, tm.tm_hour,
-				tm.tm_min, tm.tm_sec, tv.tv_usec);
+				tm.tm_min, tm.tm_sec, tv.tv_nsec / 1000);
 
 		/* 1+1 indicate '\n'+'\0' */
 		total_log_len = length + tlen + 1 + 1;
@@ -543,12 +543,12 @@ int pktlog_send_per_pkt_stats_to_user(void)
 			ret = 0;
 		}
 err:
-	/*
-	 * Free old skb in case or error before assigning new skb
-	 * to the free list.
-	 */
-	if (free_old_skb)
-		dev_kfree_skb(pstats_msg->skb);
+		/*
+		* Free old skb in case or error before assigning new skb
+		* to the free list.
+		*/
+		if (free_old_skb)
+			dev_kfree_skb(pstats_msg->skb);
 
 		adf_os_spin_lock_irqsave(&gwlan_logging.pkt_stats_lock);
 		pstats_msg->skb = skb_new;
@@ -782,8 +782,11 @@ static int wlan_logging_thread(void *Arg)
 	}
 
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+	kthread_complete_and_exit(&gwlan_logging.shutdown_comp, 0);
+#else
 	complete_and_exit(&gwlan_logging.shutdown_comp, 0);
-
+#endif
 	return 0;
 }
 

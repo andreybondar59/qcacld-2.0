@@ -2155,7 +2155,11 @@ static void hdd_send_roamed_ind(struct net_device *dev,
 {
 	struct cfg80211_roam_info info = {0};
 
+#if defined(FORCE_MLO_SUPPORT) || (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+	info.links[0].bss = bss;
+#else
 	info.bss = bss;
+#endif
 	info.req_ie = req_ie;
 	info.req_ie_len = req_ie_len;
 	info.resp_ie = resp_ie;
@@ -6457,7 +6461,7 @@ static int __iw_get_ap_address(struct net_device *dev,
     }
     else
     {
-        memset(wrqu->ap_addr.sa_data,0,sizeof(wrqu->ap_addr.sa_data));
+        memset(wrqu->ap_addr.sa_data,0,ETH_ALEN);
     }
     EXIT();
     return 0;

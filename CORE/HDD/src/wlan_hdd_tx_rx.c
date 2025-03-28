@@ -774,14 +774,15 @@ drop_list:
    return NETDEV_TX_OK;
 }
 
-int hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
+netdev_tx_t hdd_hard_start_xmit(struct sk_buff *skb, struct net_device *dev)
 {
 	int ret;
 
 	vos_ssr_protect(__func__);
 	ret = __hdd_hard_start_xmit(skb, dev);
 	vos_ssr_unprotect(__func__);
-	return ret;
+
+	return (netdev_tx_t)ret;
 }
 
 /**
@@ -953,7 +954,11 @@ static void __hdd_tx_timeout(struct net_device *dev)
  *
  * Return: none
  */
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5,5,0))
+void hdd_tx_timeout(struct net_device *dev, unsigned int txqueue)
+#else
 void hdd_tx_timeout(struct net_device *dev)
+#endif
 {
 	vos_ssr_protect(__func__);
 	__hdd_tx_timeout(dev);
@@ -1274,7 +1279,7 @@ VOS_STATUS hdd_mon_rx_packet_cbk(v_VOID_t *vos_ctx, adf_nbuf_t rx_buf,
 			 * This is the last packet on the chain
 			 * Scheduling rx sirq
 			 */
-			rxstat = netif_rx_ni(skb);
+			rxstat = netif_rx(skb);
 		}
 
 		if (NET_RX_SUCCESS == rxstat)
@@ -1339,7 +1344,7 @@ VOS_STATUS hdd_vir_mon_rx_cbk(v_VOID_t *vos_ctx, adf_nbuf_t rx_buf,
 			 * This is the last packet on the chain
 			 * Scheduling rx sirq
 			 */
-			rxstat = netif_rx_ni(skb);
+			rxstat = netif_rx(skb);
 		}
 
 		skb = skb_next;
@@ -1407,6 +1412,10 @@ static inline void hdd_tsf_timestamp_rx(hdd_context_t *hdd_ctx,
 					uint64_t target_time)
 {
 }
+#endif
+
+#ifndef cfg80211_is_gratuitous_arp_unsolicited_na
+#define cfg80211_is_gratuitous_arp_unsolicited_na(skb) 0
 #endif
 
 /**============================================================================
@@ -1583,7 +1592,7 @@ VOS_STATUS hdd_rx_packet_cbk(v_VOID_t *vosContext,
            * This is the last packet on the chain
            * Scheduling rx sirq
            */
-          rxstat = netif_rx_ni(skb);
+          rxstat = netif_rx(skb);
       }
 
       if (NET_RX_SUCCESS == rxstat)

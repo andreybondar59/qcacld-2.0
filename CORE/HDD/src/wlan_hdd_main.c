@@ -10765,7 +10765,11 @@ static int __hdd_set_mac_address(struct net_device *dev, void *addr)
 		return ret;
 
 	memcpy(&pAdapter->macAddressCurrent, psta_mac_addr->sa_data, ETH_ALEN);
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+	dev_addr_mod(dev, 0, psta_mac_addr->sa_data, ETH_ALEN);
+#else
 	memcpy(dev->dev_addr, psta_mac_addr->sa_data, ETH_ALEN);
+#endif
 
 	EXIT();
 	return 0;
@@ -11232,7 +11236,11 @@ static hdd_adapter_t* hdd_alloc_station_adapter(hdd_context_t *pHddCtx,
       strlcpy(pAdapter->ifname, name, IFNAMSIZ);
 #endif
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+      dev_addr_mod(pWlanDev, 0, (void *)macAddr, sizeof(tSirMacAddr));
+#else
       vos_mem_copy(pWlanDev->dev_addr, (void *)macAddr, sizeof(tSirMacAddr));
+#endif
       vos_mem_copy( pAdapter->macAddressCurrent.bytes, macAddr, sizeof(tSirMacAddr));
       pWlanDev->watchdog_timeo = HDD_TX_TIMEOUT;
       /*
@@ -11303,8 +11311,12 @@ static hdd_adapter_t *hdd_alloc_monitor_adapter(hdd_context_t *pHddCtx,
 	   /* Init the net_device structure */
 	   strlcpy(pwlan_dev->name, name, IFNAMSIZ);
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+	   dev_addr_mod(pwlan_dev, 0, (void *)macAddr, sizeof(tSirMacAddr));
+#else
 	   vos_mem_copy(pwlan_dev->dev_addr,
 			(void *)macAddr, sizeof(tSirMacAddr));
+#endif
 	   vos_mem_copy(pAdapter->macAddressCurrent.bytes,
 			macAddr, sizeof(tSirMacAddr));
 	   pwlan_dev->watchdog_timeo = HDD_TX_TIMEOUT;
@@ -11352,7 +11364,11 @@ VOS_STATUS hdd_register_interface( hdd_adapter_t *pAdapter, tANI_U8 rtnl_lock_he
             return VOS_STATUS_E_FAILURE;
          }
       }
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
+      if (cfg80211_register_netdevice(pWlanDev))
+#else
       if (register_netdevice(pWlanDev))
+#endif
       {
          hddLog(VOS_TRACE_LEVEL_ERROR,"%s:Failed:register_netdev",__func__);
          return VOS_STATUS_E_FAILURE;
@@ -11734,7 +11750,11 @@ void hdd_cleanup_adapter(hdd_context_t *pHddCtx, hdd_adapter_t *pAdapter,
 
    if (test_bit(NET_DEVICE_REGISTERED, &pAdapter->event_flags)) {
       if (rtnl_held) {
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
+         cfg80211_unregister_netdevice(pWlanDev);
+#else
          unregister_netdevice(pWlanDev);
+#endif
       } else {
          unregister_netdev(pWlanDev);
       }
@@ -12599,7 +12619,11 @@ err_add_adapter_back:
 
 err_malloc_adapter_node:
 	if (rtnl_held)
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 12, 0))
+        cfg80211_unregister_netdevice(adapter->dev);
+#else
 		unregister_netdevice(adapter->dev);
+#endif
 	else
 		unregister_netdev(adapter->dev);
 
@@ -13448,7 +13472,11 @@ static void hdd_connect_done(struct net_device *dev, const u8 *bssid,
     struct cfg80211_connect_resp_params fils_params;
     vos_mem_zero(&fils_params, sizeof(fils_params));
 
+#if defined(FORCE_MLO_SUPPORT) || (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+    fils_params.links[0].bssid = bssid;
+#else
     fils_params.bssid = bssid;
+#endif
     if (!roam_fils_params) {
         fils_params.status = WLAN_STATUS_UNSPECIFIED_FAILURE;
         hdd_populate_fils_params(&fils_params, NULL, 0, NULL,
@@ -13460,7 +13488,11 @@ static void hdd_connect_done(struct net_device *dev, const u8 *bssid,
         fils_params.req_ie_len = req_ie_len;
         fils_params.resp_ie = resp_ie;
         fils_params.resp_ie_len = resp_ie_len;
+#if defined(FORCE_MLO_SUPPORT) || (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0))
+        fils_params.links[0].bss = bss;
+#else
         fils_params.bss = bss;
+#endif
         hdd_populate_fils_params(&fils_params, roam_fils_params->kek,
                      roam_fils_params->kek_len,
                      roam_fils_params->fils_pmk,
@@ -15722,9 +15754,11 @@ int _readwrite_file(const char *filename, char *rbuf,
 {
 	int ret = 0;
 	struct file *filp = (struct file *)-ENOENT;
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
 	mm_segment_t oldfs;
 	oldfs = get_fs();
 	set_fs(KERNEL_DS);
+#endif
 
 	do {
 		filp = filp_open(filename, mode, S_IRUSR);
@@ -15772,7 +15806,9 @@ int _readwrite_file(const char *filename, char *rbuf,
 		filp_close(filp, NULL);
 	}
 
+#if LINUX_VERSION_CODE < KERNEL_VERSION(5,18,0)
 	set_fs(oldfs);
+#endif
 	return ret;
 }
 
@@ -15850,7 +15886,11 @@ static void hdd_set_ixc_prio(void *priv)
                 memset(comm, 0, sizeof(comm));
                 strcpy(comm, task->comm);
                 if(strstr(comm, "ixchariot") || strstr(comm, "iperf")) {
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0)
+                    sched_set_fifo(task);
+#else
                     sched_setscheduler(task, SCHED_FIFO, &param);
+#endif
 #ifdef CONFIG_PERF_MODE
                     enable_wlan_perf_mode();
 #endif
@@ -17114,6 +17154,8 @@ int hdd_wlan_startup(struct device *dev, v_VOID_t *hif_sc)
    vos_mem_zero(pHddCtx->cfg_ini, sizeof( hdd_config_t ));
 
    // Read and parse the qcom_cfg.ini file
+   hif_get_hw_info(hif_sc, &pHddCtx->target_hw_version,
+                   &pHddCtx->target_hw_revision);
    status = hdd_parse_config_ini( pHddCtx );
    if ( VOS_STATUS_SUCCESS != status )
    {
@@ -18338,7 +18380,9 @@ success:
 
 /* accommodate the request firmware bin time out 2 min */
 #define REQUEST_FWR_TIMEOUT 120000
+#ifndef HDD_WLAN_START_WAIT_TIME
 #define HDD_WLAN_START_WAIT_TIME (VOS_WDA_TIMEOUT + 5000 + REQUEST_FWR_TIMEOUT)
+#endif
 /**
  * hdd_hif_register_driver() - API for HDD to register with HIF
  *

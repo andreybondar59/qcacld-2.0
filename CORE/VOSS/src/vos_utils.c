@@ -72,11 +72,14 @@
 #include <linux/ieee80211.h>
 #include <crypto/hash.h>
 #include <crypto/aes.h>
+#if(LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0))
+#include <crypto/internal/cipher.h>
+#endif
 #include <wcnss_api.h>
 #ifdef CONFIG_CNSS
 #include <linux/qcomwlan_secif.h>
 #endif
-#include <errno.h>
+#include <linux/errno.h>
 
 #include "ieee80211_common.h"
 /*----------------------------------------------------------------------------
@@ -646,9 +649,15 @@ struct hmac_sha1_result {
     int err;
 };
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+static void hmac_sha1_complete(void *req, int err)
+{
+    struct hmac_sha1_result *r = req;
+#else
 static void hmac_sha1_complete(struct crypto_async_request *req, int err)
 {
     struct hmac_sha1_result *r = req->data;
+#endif
     if (err == -EINPROGRESS)
         return;
     r->err = err;
@@ -819,9 +828,15 @@ struct hmac_md5_result {
     int err;
 };
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(6, 3, 0))
+static void hmac_md5_complete(void *req, int err)
+{
+    struct hmac_md5_result *r = req;
+#else
 static void hmac_md5_complete(struct crypto_async_request *req, int err)
 {
     struct hmac_md5_result *r = req->data;
+#endif
     if (err == -EINPROGRESS)
             return;
     r->err = err;
@@ -1094,3 +1109,6 @@ int vos_status_to_os_return(VOS_STATUS status)
 		return -EPERM;
 	}
 }
+#if(LINUX_VERSION_CODE >= KERNEL_VERSION(5,12,0))
+MODULE_IMPORT_NS(CRYPTO_INTERNAL);
+#endif

@@ -68,7 +68,11 @@ static void *memdump_get_file_data(struct file *file)
 {
 	void *hdd_ctx;
 
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(5, 17, 0))
+	hdd_ctx = pde_data(file_inode(file));
+#else
 	hdd_ctx = PDE_DATA(file_inode(file));
+#endif
 	return hdd_ctx;
 }
 #else
@@ -211,9 +215,15 @@ static ssize_t hdd_driver_memdump_read(struct file *file, char __user *buf,
  * This structure initialize the file operation handle for memory
  * dump feature
  */
+#if LINUX_VERSION_CODE >= KERNEL_VERSION(5,6,0)
+static const struct proc_ops driver_dump_fops = {
+	proc_read: hdd_driver_memdump_read
+};
+#else
 static const struct file_operations driver_dump_fops = {
 	read: hdd_driver_memdump_read
 };
+#endif
 
 /**
  * hdd_driver_memdump_procfs_init() - Initialize procfs for driver memory dump
